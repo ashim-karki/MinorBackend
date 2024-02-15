@@ -98,5 +98,6 @@ def UseMlModel(request):
                 "Prediction": serializable_prediction,
                 "Song Names": Song_Names,
                 "Song ID": Song_IDs,
+                # "Image" :base64_string,
             }
         )
