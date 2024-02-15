@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view
 from .serializers import ImageSerializer
 from .models import ImageModel
 
-import os
+import os , ast
 import tensorflow as tf
 import cv2
 import numpy as np
@@ -14,12 +14,16 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import spotipy
 import pandas as pd
 from scipy.spatial import distance
+from .facedetect import detect_face
+
 
 # Load the trained model
 model = tf.keras.models.load_model(
     "mlmodel/models/trial_model.h5"
 )  # place model from drive
-
+model1 = tf.keras.models.load_model(
+    "mlmodel/models/emotion_classifier.h5"
+)
 client_id = "cliend id here"
 client_secret = "client secret here"
 client_credentials_manager = SpotifyClientCredentials(
@@ -27,7 +31,8 @@ client_credentials_manager = SpotifyClientCredentials(
 )
 sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
-df = pd.read_csv("mlmodel/songs_dataset/songs_dataset.csv", sep=",")
+# df = pd.read_csv("mlmodel/songs_dataset/songs_dataset.csv", sep=",")
+df = pd.read_csv("mlmodel/songs_dataset/temp.csv", sep=",")
 
 
 # Create your views here.
@@ -101,3 +106,136 @@ def UseMlModel(request):
                 # "Image" :base64_string,
             }
         )
+
+
+@api_view(["POST"])
+def UseMlModelTemp(request):
+    if request.method == "POST":
+        existing_check = ImageModel.objects.filter(tempid=1)
+        if not existing_check:
+            serialized_image = ImageSerializer(data=request.data)
+        else:
+            existing_image = ImageModel.objects.get(tempid=1)
+            serialized_image = ImageSerializer(existing_image, data=request.data)
+
+        if serialized_image.is_valid():
+            serialized_image.save()
+
+            image_name = request.data["image"].name
+            image_path = "mlmodel/images/" + image_name
+
+            with open(image_path, "rb") as image_file:
+                base64_bytes = base64.b64encode(image_file.read())
+                base64_string = base64_bytes.decode()
+
+            image = cv2.imread(image_path)
+            image = cv2.resize(image, (150, 150))
+            image = np.expand_dims(image, axis=0)
+            image = image / 255.0
+
+            os.remove(image_path)
+
+        prediction = model.predict(image)
+        prediction = prediction.flatten()  # convert 2d to 1d array
+        serializable_prediction = prediction.tolist()
+        serializable_prediction.append(0.6446094)  # test_value
+
+        # USING EUCLIDEAN DISTANCE
+        music_data_list = []
+        number_of_songs = len(df)
+        euclidean_distance = 0
+        
+        for i in range(number_of_songs):
+            case_values = [df["valence"].values[i], df["energy"].values[i]]
+            euclidean_distance = distance.euclidean(
+                serializable_prediction, case_values
+            )
+            print(euclidean_distance)
+            if euclidean_distance < 0.9:
+                music_data = {
+                    "Song Name": df["name"].values[i],
+                    "Song ID": df["id"].values[i],
+                    "Preview Url": df["preview_url"].values[i],
+                }
+                music_data_list.append(music_data)
+
+        return JsonResponse({"Predictions": serializable_prediction, "Music Data": music_data_list})
+
+
+@api_view(["POST"])
+def DetectEmotion(request):
+    if request.method == "POST":
+        existing_check = ImageModel.objects.filter(tempid=1)
+        if not existing_check:
+            serialized_image = ImageSerializer(data=request.data)
+        else:
+            existing_image = ImageModel.objects.get(tempid=1)
+            serialized_image = ImageSerializer(existing_image, data=request.data)
+
+        if serialized_image.is_valid():
+            serialized_image.save()
+
+            image_name = request.data["image"].name
+            image_path = "mlmodel/images/" + image_name
+
+            with open(image_path, "rb") as image_file:
+                base64_bytes = base64.b64encode(image_file.read())
+                base64_string = base64_bytes.decode()
+            # reuturn emotion Class label_dict = {0:'Angry',1:'Disgust',2:'Fear',3:'Happy',4:'Neutral',5:'Sad',6:'Surprise'}
+        
+
+
+        
+        emotionClass = classify(imagePath=image_path)
+        
+
+        os.remove(image_path)
+
+        predicted_values = np.array(mapEmotionToValAro(emotionClass))
+        recommendMusicDF = recommend(predicted_values,df,9)
+        recommended_songs_dict = recommendMusicDF.to_dict(orient='records')
+
+    return JsonResponse({"Music Data":recommended_songs_dict})
+
+        
+def recommend(test_values, songs_data, n_recs):
+    songs_data["distance"] = songs_data["mood_vectors"].apply(
+        lambda x: np.linalg.norm(test_values - np.array(ast.literal_eval(x)))
+    )
+    songs_data_sorted = songs_data.sort_values(by="distance", ascending=True)
+    return songs_data_sorted.iloc[:n_recs][["name", "id", "preview_url"]].rename(columns={"name": "Song Name", "id": "Song ID", "preview_url": "Preview Url"})
+
+        
+
+def load_image(imagePath):
+    img = detect_face(imagePath)
+    img = np.array(img)
+    return img 
+
+def classify(imagePath):
+    img = load_image(imagePath)
+    img = np.expand_dims(img,axis = 0) #makes image shape (1,48,48)
+    img = img.reshape(1,48,48,1)
+    result = model1.predict(img)
+    result = list(result[0])
+    img_index = result.index(max(result))
+    return img_index
+
+def mapEmotionToValAro(index):
+    if index == 0:
+        return [0.1,0.4]
+    if index == 1:
+        return [0.2,0.5]
+    if index == 2:
+        return [0.4,0.1]
+    if index == 3:
+        return [0.1,0.4]
+    if index == 4:
+        return [0.2,0.5]
+    if index == 5:
+        return [0.4,0.1]
+    if index == 6:
+        return [0.1,0.4]
+    if index == 7:
+        return [0.2,0.5]
+    

@@ -1,4 +1,6 @@
 from django.urls import path
-from .views import UseMlModel
+from .views import UseMlModel,UseMlModelTemp,DetectEmotion
 
-urlpatterns = [path("", UseMlModel, name="mlmodel")]
+urlpatterns = [path("mlmodel", UseMlModelTemp, name="mlmodel"),
+               path("detect",DetectEmotion,name= 'detect'),
+               ]
