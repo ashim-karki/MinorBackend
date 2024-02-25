@@ -3,27 +3,25 @@ import numpy as np
 # import matplotlib.pyplot as plt
 face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-def detect_face(imagePath, imageSize=48):
+def detect_face(imagePath, imageSize=224):
     img = cv2.imread(imagePath)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    face = face_detector.detectMultiScale(img, 1.1, 5, minSize=(40, 40))
 
-    # Detect faces
-    faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40))
+    if len(face) > 0:
+        x, y, w, h = face[0]
+        crop_img = img[y:y+h, x:x+w]
+        cropped = cv2.resize(crop_img, (imageSize, imageSize))
+        img_rgb = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
+        
+        # plt.figure(figsize=(5, 5))
+        # plt.imshow(img_rgb)
+        # plt.axis('off')
+        # plt.show()
 
-    if len(faces) == 0:
+        return img_rgb
+    else:
         print("No face detected.")
-        return None  # Return None to indicate no face detected
-
-    # Assuming you want to work with the first detected face
-    x, y, w, h = faces[0]
-    crop_img = gray[y:y + h, x:x + w]
-    cropped = cv2.resize(crop_img, (imageSize, imageSize))
-    print(cropped.shape)
-    img_rgb = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
-    
-    # Return the cropped face image
-    return cropped
-
+        return None
 
 #     plt.figure(figsize=(48,48))
 #     plt.imshow(img_rgb)

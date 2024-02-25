@@ -24,6 +24,7 @@ model = tf.keras.models.load_model(
 model1 = tf.keras.models.load_model(
     "mlmodel/models/emotion_classifier.h5"
 )
+model2 = tf.keras.models.load_model("mlmodel/models/affectnet_CNN_VGG2_fine.h5")
 client_id = "cliend id here"
 client_secret = "client secret here"
 client_credentials_manager = SpotifyClientCredentials(
@@ -34,7 +35,17 @@ sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 df = pd.read_csv("mlmodel/songs_dataset/songs_dataset.csv", sep=",")
 df1 = pd.read_csv("mlmodel/songs_dataset/temp.csv", sep=",")
 
-emotion_label_dict = {0:'Angry',1:'Disgust',2:'Fear',3:'Happy',4:'Neutral',5:'Sad',6:'Surprise'}
+# emotion_label_dict = {0:'Angry',1:'Disgust',2:'Fear',3:'Happy',4:'Neutral',5:'Sad',6:'Surprise'}
+emotion_label_dict = {
+    0:'neutral',
+    1:'happiness',
+    2:'sadness',
+    3:'surprise',
+    4:'fear',
+    5:'disgust',
+    6: 'anger',
+    7:'contempt',
+   }
 # Create your views here.
 @api_view(["POST"])
 def UseMlModel(request):
@@ -216,8 +227,8 @@ def load_image(imagePath):
 def classify(imagePath):
     img = load_image(imagePath)
     img = np.expand_dims(img,axis = 0) #makes image shape (1,48,48)
-    img = img.reshape(1,48,48,1)
-    result = model1.predict(img)
+    
+    result = model2.predict(img)
     result = list(result[0])
     img_index = result.index(max(result))
     return img_index
