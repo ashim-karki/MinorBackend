@@ -31,10 +31,10 @@ client_credentials_manager = SpotifyClientCredentials(
 )
 sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
-# df = pd.read_csv("mlmodel/songs_dataset/songs_dataset.csv", sep=",")
-df = pd.read_csv("mlmodel/songs_dataset/temp.csv", sep=",")
+df = pd.read_csv("mlmodel/songs_dataset/songs_dataset.csv", sep=",")
+df1 = pd.read_csv("mlmodel/songs_dataset/temp.csv", sep=",")
 
-
+emotion_label_dict = {0:'Angry',1:'Disgust',2:'Fear',3:'Happy',4:'Neutral',5:'Sad',6:'Surprise'}
 # Create your views here.
 @api_view(["POST"])
 def UseMlModel(request):
@@ -181,21 +181,22 @@ def DetectEmotion(request):
             with open(image_path, "rb") as image_file:
                 base64_bytes = base64.b64encode(image_file.read())
                 base64_string = base64_bytes.decode()
-            # reuturn emotion Class label_dict = {0:'Angry',1:'Disgust',2:'Fear',3:'Happy',4:'Neutral',5:'Sad',6:'Surprise'}
+            # reuturn emotion Class
         
 
 
         
         emotionClass = classify(imagePath=image_path)
+        emotionName = emotion_label_dict[emotionClass]
         
 
         os.remove(image_path)
 
         predicted_values = np.array(mapEmotionToValAro(emotionClass))
-        recommendMusicDF = recommend(predicted_values,df,9)
+        recommendMusicDF = recommend(predicted_values,df1,9)
         recommended_songs_dict = recommendMusicDF.to_dict(orient='records')
 
-    return JsonResponse({"Music Data":recommended_songs_dict})
+    return JsonResponse({"Music Data":recommended_songs_dict,"Emotion": emotionName})
 
         
 def recommend(test_values, songs_data, n_recs):
