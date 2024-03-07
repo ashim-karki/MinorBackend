@@ -19,5 +19,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('mlmodel/', include("mlmodel.urls")),
+    path('api/', include("mlmodel.urls")),
+    # path('auth/token/', spotify_login, name='spotify_login'),
+    # path('auth/callback/', spotify_auth, name='spotify_auth'),
 ]
