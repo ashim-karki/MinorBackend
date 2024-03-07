@@ -18,13 +18,13 @@ from .facedetect import detect_face
 
 
 # Load the trained model
-model = tf.keras.models.load_model(
-    "mlmodel/models/trial_model.h5"
-)  # place model from drive
-model1 = tf.keras.models.load_model(
-    "mlmodel/models/emotion_classifier.h5"
-)
-model2 = tf.keras.models.load_model("mlmodel/models/affectnet_CNN_VGG2_fine.h5")
+#model = tf.keras.models.load_model(
+#    "mlmodel/models/trial_model.h5"
+#)  # place model from drive
+#model1 = tf.keras.models.load_model(
+#    "mlmodel/models/emotion_classifier.h5"
+#)
+model2 = tf.keras.models.load_model("mlmodel/models/affectnet_CNN_VGG_FIVEEMO_FINE_FINAL.h5")
 client_id = "cliend id here"
 client_secret = "client secret here"
 client_credentials_manager = SpotifyClientCredentials(
@@ -197,13 +197,13 @@ def DetectEmotion(request):
 
 
         
-        emotionClass = classify(imagePath=image_path)
+        emotionClass,emotionWeight = classify(imagePath=image_path)
         emotionName = emotion_label_dict[emotionClass]
         
 
         os.remove(image_path)
 
-        predicted_values = np.array(mapEmotionToValAro(emotionClass))
+        predicted_values = np.array(mapEmotionToValAro(emotionClass,emotionWeight))
         recommendMusicDF = recommend(predicted_values,df1,9)
         recommended_songs_dict = recommendMusicDF.to_dict(orient='records')
 
@@ -229,25 +229,34 @@ def classify(imagePath):
     img = np.expand_dims(img,axis = 0) #makes image shape (1,48,48)
     
     result = model2.predict(img)
-    result = list(result[0])
-    img_index = result.index(max(result))
-    return img_index
-
-def mapEmotionToValAro(index):
-    if index == 0:
-        return [0.1,0.4]
-    if index == 1:
-        return [0.2,0.5]
-    if index == 2:
-        return [0.4,0.1]
-    if index == 3:
-        return [0.1,0.4]
-    if index == 4:
-        return [0.2,0.5]
-    if index == 5:
-        return [0.4,0.1]
-    if index == 6:
-        return [0.1,0.4]
-    if index == 7:
-        return [0.2,0.5]
+    result = tf.nn.softmax(result)
+    weight = np.max(result,axis = 1)
+    result = np.argmax(result,axis = 1)
     
+    # result = list(result[0])
+    # img_index = result.index(max(result))
+    
+    # print(result)
+    img_index  = result[0]
+    # result = list(result[0])
+    return img_index,weight
+
+def mapEmotionToValAro(index,weight):
+    if index == 0:
+        return weight * [0.5, 0.5]  # neutral
+    elif index == 1:
+        return weight * [0.8, 0.8]  # happiness
+    elif index == 2:
+        return weight * [0.2, 0.2]  # sadness
+    elif index == 3:
+        return weight * [0.7, 0.8]  # surprise
+    elif index == 4:
+        return weight * [0.2, 0.7]  # fear
+    elif index == 5:
+        return weight * [0.2, 0.2]  # disgust
+    elif index == 6:
+        return [0.2, 0.8]  # anger
+    elif index == 7:
+        return [0.4, 0.4]  # contempt
+    else:
+        return None  # handle invalid index
