@@ -206,6 +206,7 @@ def DetectEmotion(request):
         predicted_values = np.array(mapEmotionToValAro(emotionClass,emotionWeight))
         recommendMusicDF = recommend(predicted_values,df1,9)
         recommended_songs_dict = recommendMusicDF.to_dict(orient='records')
+        print(emotionName)
 
     return JsonResponse({"Music Data":recommended_songs_dict,"Emotion": emotionName})
 
@@ -215,7 +216,7 @@ def recommend(test_values, songs_data, n_recs):
         lambda x: np.linalg.norm(test_values - np.array(ast.literal_eval(x)))
     )
     songs_data_sorted = songs_data.sort_values(by="distance", ascending=True)
-    return songs_data_sorted.iloc[:n_recs][["name", "id", "preview_url"]].rename(columns={"name": "Song Name", "id": "Song ID", "preview_url": "Preview Url"})
+    return songs_data_sorted.iloc[:n_recs][["name", "id", "preview_url","album_image"]].rename(columns={"name": "Song Name", "id": "Song ID", "preview_url": "Preview Url","album_image":"Album Image"})
 
         
 
